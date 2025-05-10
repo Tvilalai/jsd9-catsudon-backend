@@ -36,7 +36,8 @@ const AddressSchema = new Schema({
 
 const UserSchema = new Schema(
   {
-    role: { type: String, enum: ["user", "admin"], required: true },
+    username: { type: String, required: true, unique: true, trim: true },
+    role: { type: String, enum: ["user", "admin"], default: "user", required: true },
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
     email: { type: String, required: true },
