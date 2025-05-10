@@ -3,26 +3,32 @@ import bcrypt from "bcrypt";
 import validator from "validator";
 import { User } from "../models/User.js";
 
-// Register
+// Register (Create Account)
 export const createAccount = async (req, res, next) => {
     const { username, firstName, lastName, email, password } = req.body;
 
     if (!username || !firstName || !lastName || !validator.isEmail(email) || !password) {
-        return next(new Error("Invalid input"));
+         const error = new Error("Invalid input");
+        error.statusCode = 400;
+        return next(error);
     }
 
     if (!validator.isStrongPassword(password)) {
-        return next(new Error("Weak password"));
+        const error = new Error("Weak password");
+        error.statusCode = 400;
+        return next(error);
     }
 
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
-        return next(new Error("User exists"));
+        const error = new Error("User exists");
+        error.statusCode = 400;
+        return next(error);
     }
 
     try {
-        const hashedPassword = await bcrypt.hash(password, 12);
+        const hashedPassword = await bcrypt.hash(password, 14);
 
         const user = new User({
             username,
@@ -39,7 +45,7 @@ export const createAccount = async (req, res, next) => {
             message: "Registration successful. Please log in to continue."
         });
     } catch (error) {
-        next(error)
+        next(error);
     }
 };
 
@@ -48,7 +54,9 @@ export const login = async (req, res, next) => {
     const { emailOrUsername, password } = req.body;
 
     if (!emailOrUsername || !password) {
-        return next(new Error("Email/Username and password required"));
+        const error = new Error("Email/Username and password required");
+        error.statusCode = 400;
+        return next(error);
     }
 
     try {
@@ -57,13 +65,17 @@ export const login = async (req, res, next) => {
         });
 
         if (!user) {
-            return next(new Error("User not found"));
+            const error = new Error("User not found");
+            error.statusCode = 404; 
+            return next(error);
         }
 
         const isValid = user && await bcrypt.compare(password, user.password);
 
         if (!isValid) {
-            return next(new Error("Invalid credentials"));
+            const error = new Error("Invalid credentials");
+            error.statusCode = 401;
+            return next(error);
         }
 
         const payload = {
@@ -73,17 +85,22 @@ export const login = async (req, res, next) => {
             role: user.role
         };
 
+        
+        if (!process.env.JWT_SECRET) {
+            throw new Error("JWT_SECRET not defined");
+        }
+
         const accessToken = jwt.sign(
             payload,
             process.env.JWT_SECRET,
-            { expiresIn: "1h" }
+            { expiresIn: "24h" }
         );
 
         res.cookie("accessToken", accessToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "Strict",
-            maxAge: 1 * 60 * 60 * 1000,
+            maxAge: 24 * 60 * 60 * 1000,
         }).json({
             error: false,
             user: payload,
