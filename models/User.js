@@ -1,4 +1,5 @@
 import mongoose, { model, Schema } from "mongoose";
+import bcrypt from "bcrypt";
 
 const ItemSchema = new Schema({
   menuId: {
@@ -37,15 +38,27 @@ const AddressSchema = new Schema({
 const UserSchema = new Schema(
   {
     username: { type: String, required: true, unique: true, trim: true },
-    role: { type: String, enum: ["user", "admin"], default: "user", required: true },
-    firstName: { type: String, required: true },
-    lastName: { type: String, required: true },
-    email: { type: String, required: true },
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
+      required: true,
+      trim: true,
+    },
+    firstName: { type: String, required: true, trim: true },
+    lastName: { type: String, required: true, trim: true },
+    email: { type: String, required: true, trim: true },
     password: { type: String, required: true },
     cart: { type: [ItemSchema], default: [] },
     address: AddressSchema,
   },
   { timestamps: true }
 );
+
+UserSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+  this.password = await bcrypt.hash(this.password, 14);
+  next();
+});
 
 export const User = model("User", UserSchema);
