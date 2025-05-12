@@ -111,10 +111,15 @@ const addToCart = async (req, res, next) => {
     !itemToAdd.menuId ||
     !itemToAdd.name ||
     !itemToAdd.price ||
-    itemToAdd.quantity < 1 ||
     !itemToAdd.imageUrl
   ) {
     const error = new Error("Please provide all fields.");
+    error.statusCode = 400;
+    return next(error);
+  }
+
+  if (itemToAdd.quantity < 1) {
+    const error = new Error("Item quantity cannot be less than 1");
     error.statusCode = 400;
     return next(error);
   }
@@ -144,7 +149,7 @@ const addToCart = async (req, res, next) => {
     }
 
     await user.save();
-    res.json({
+    res.status(201).json({
       error: false,
       message: "Item added to cart successfully",
       cart: user.cart,
@@ -156,60 +161,49 @@ const addToCart = async (req, res, next) => {
 
 const updateCartItem = async (req, res, next) => {
   const { _id: userId } = req.user.user;
-  const { menuId } = req.params;
+  const { itemId } = req.params;
   const { quantity } = req.body;
 
-  if (!mongoose.Types.ObjectId.isValid(menuId)) {
+  if (!mongoose.Types.ObjectId.isValid(itemId)) {
     const error = new Error("Invalid Item ID");
     error.statusCode = 400;
     return next(error);
   }
 
-  if (!["increase", "decrease"].includes(action)) {
-    const error = new Error("Invalid action type");
-    error.statusCode = 404;
-    return next(error);
-  }
-
-  if (typeof quantity !== "number" || quantity < 0) {
-    const error = new Error("Quantity must be a non-negative number");
+  if (typeof quantity !== "number") {
+    const error = new Error("Quantity must be a number");
     error.statusCode = 400;
     return next(error);
   }
 
   try {
-    const user = await User.findById(userId).populate("cart.menuId");
+    const user = await User.findById(userId);
+    if (!user) {
+      const error = new Error("User not found");
+      error.statusCode = 404;
+      return next(error);
+    }
 
     const itemIndex = user.cart.findIndex(
-      (item) => item.menuId.toString() === menuId
+      (item) => item._id.toString() === itemId
     );
-    const item = user.cart[itemIndex];
-    if (!item) {
+
+    if (itemIndex === -1) {
       const error = new Error("Item not found in your cart");
       error.statusCode = 404;
       return next(error);
     }
 
-    if (quantity === 0) {
+    const item = user.cart[itemIndex];
+
+    if (item.quantity === quantity) return;
+    if (quantity <= 0) {
       user.cart.splice(itemIndex, 1);
+    } else {
+      item.quantity = quantity;
     }
-    item.quantity = quantity;
 
-    const menu = await Menu.findById(menuId);
-    if (!menu) {
-      const error = new Error("Menu not found");
-      error.statusCode = 404;
-      return next(error);
-    }
-    user.cart.push({
-      menuId,
-      name: menu.name,
-      price: menu.price,
-      quantity,
-      image: menu.image,
-    });
     await user.save();
-
     res.json({
       error: false,
       message: "Cart updated successfully",
@@ -222,9 +216,9 @@ const updateCartItem = async (req, res, next) => {
 
 const deleteCartItem = async (req, res, next) => {
   const { _id: userId } = req.user.user;
-  const { menuId } = req.body;
+  const { itemId } = req.params;
 
-  if (!mongoose.Types.ObjectId.isValid(menuId)) {
+  if (!mongoose.Types.ObjectId.isValid(itemId)) {
     const error = new Error("Invalid item ID");
     error.statusCode = 404;
     return next(error);
@@ -232,15 +226,37 @@ const deleteCartItem = async (req, res, next) => {
 
   try {
     const user = await User.findById(userId);
-    const itemIndex = user.cart.findIndex((item) => item.menuId === menuId);
-    const item = user.cart[itemIndex];
-    if (!item) {
-      const error = new Error("Item not found in cart");
+    user.cart = user.cart.filter((item) => item._id.toString() !== itemId);
+    await user.save();
+
+    res.json({
+      error: false,
+      message: "Item deleted successfully",
+      cart: filteredCart,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const clearCart = async (req, res, next) => {
+  const { _id: userId } = req.user.user;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      const error = new Error("User not found");
       error.statusCode = 404;
       return next(error);
     }
-    user.cart.splice(itemIndex, 1);
-    res.json({ error: false, message: "Item deleted successfully" });
+    user.cart = [];
+    await user.save();
+
+    res.json({
+      error: false,
+      message: "Cart cleared successfully",
+      cart: user.cart,
+    });
   } catch (error) {
     next(error);
   }
@@ -332,6 +348,7 @@ export {
   addToCart,
   updateCartItem,
   deleteCartItem,
+  clearCart,
   getAllUsers,
   getOneUser,
   deleteUser,

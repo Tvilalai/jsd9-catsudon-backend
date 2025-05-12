@@ -5,6 +5,7 @@ import {
   deleteCurrentUser,
   getCart,
   addToCart,
+  clearCart,
   updateCartItem,
   deleteCartItem,
   getAllUsers,
@@ -21,8 +22,9 @@ router.put("/users/me", authUser, updateUserInformation);
 router.delete("/users/me", authUser, deleteCurrentUser);
 router.get("/users/me/cart", authUser, getCart);
 router.post("/users/me/cart", authUser, addToCart);
-router.patch("/users/me/cart/item/:menuId", authUser, updateCartItem);
-router.delete("/users/me/cart/item/:menuId", authUser, deleteCartItem);
+router.delete("/users/me/cart", authUser, clearCart);
+router.patch("/users/me/cart/item/:itemId", authUser, updateCartItem);
+router.delete("/users/me/cart/item/:itemId", authUser, deleteCartItem);
 
 // Admin-related routes
 router.get("/users", authUser, getAllUsers);
