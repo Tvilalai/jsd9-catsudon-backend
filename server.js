@@ -14,7 +14,7 @@ const corsOptions = {
     origin: ['http://localhost:5173', 'https://jsd9-catsudon-frontend.vercel.app'],
     credentials: true,
 };
-
+ 
 app.use(cors(corsOptions));
 app.use(cookieParser()); 
 app.use(express.json());

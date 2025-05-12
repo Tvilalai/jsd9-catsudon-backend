@@ -14,7 +14,7 @@ export const createAccount = async (req, res, next) => {
     }
 
     if (!validator.isStrongPassword(password)) {
-        const error = new Error("Weak password");
+        const error = new Error("Weak password. Please choose a stronger password.");
         error.statusCode = 400;
         return next(error);
     }
