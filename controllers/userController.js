@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { User } from "../models/User.js";
+import { Menu } from "../models/Menu.js";
 
 // =========================User============================
 const getCurrentUser = async (req, res, next) => {
@@ -111,7 +112,7 @@ const addToCart = async (req, res, next) => {
     !itemToAdd.name ||
     !itemToAdd.price ||
     itemToAdd.quantity < 1 ||
-    !itemToAdd.image
+    !itemToAdd.imageUrl
   ) {
     const error = new Error("Please provide all fields.");
     error.statusCode = 400;
@@ -138,7 +139,7 @@ const addToCart = async (req, res, next) => {
         name: menu.name,
         price: menu.price,
         quantity: itemToAdd.quantity,
-        image: menu.image,
+        imageUrl: menu.imageUrl,
       });
     }
 
@@ -299,7 +300,7 @@ const deleteUser = async (req, res, next) => {
 
   if (user.role !== "admin") {
     const error = new Error("Access denied. No permission.");
-    error.status = 404;
+    error.statusCode = 403;
     return next(error);
   }
 
