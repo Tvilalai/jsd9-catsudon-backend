@@ -50,7 +50,7 @@ const UserSchema = new Schema(
     email: { type: String, required: true, trim: true },
     password: { type: String, required: true },
     cart: { type: [ItemSchema], default: [] },
-    address: AddressSchema,
+    address: { type: [AddressSchema], default: [] },
   },
   { timestamps: true }
 );
