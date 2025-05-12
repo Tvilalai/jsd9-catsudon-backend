@@ -1,8 +1,32 @@
 import { Router } from "express";
-import { getAllUsers } from "../controllers/userController.js";
+import {
+  getCurrentUser,
+  updateUserInformation,
+  deleteCurrentUser,
+  getCart,
+  addToCart,
+  updateCartItem,
+  deleteCartItem,
+  getAllUsers,
+  getOneUser,
+  deleteUser,
+} from "../controllers/userController.js";
+import { authUser } from "../middlewares/auth.js";
 
 const router = Router();
 
-router.get("/users", getAllUsers);
+// User-related routes
+router.get("/users/me", authUser, getCurrentUser);
+router.put("/users/me", authUser, updateUserInformation);
+router.delete("/users/me", authUser, deleteCurrentUser);
+router.get("/users/me/cart", authUser, getCart);
+router.post("/users/me/cart", authUser, addToCart);
+router.patch("/users/me/cart/item/:menuId", authUser, updateCartItem);
+router.delete("/users/me/cart/item/:menuId", authUser, deleteCartItem);
+
+// Admin-related routes
+router.get("/users", authUser, getAllUsers);
+router.get("/users/:userId", authUser, getOneUser);
+router.delete("/users/:userId", authUser, deleteUser);
 
 export default router;
