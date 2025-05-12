@@ -20,7 +20,7 @@ const ItemSchema = new Schema({
     required: true,
     min: 1,
   },
-  image: {
+  imageUrl: {
     type: String,
     required: true,
   },
