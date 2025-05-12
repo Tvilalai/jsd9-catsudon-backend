@@ -2,19 +2,20 @@ import mongoose from "mongoose";
 import { User } from "../models/User.js";
 import { Menu } from "../models/Menu.js";
 
-// =========================User============================
+/* ========================= User ============================ */
+// User
 const getCurrentUser = async (req, res, next) => {
-  const { user } = req.user;
+  const { _id: userId } = req.user.user;
 
-  if (!user || !user._id) {
+  if (!userId) {
     const error = new Error("Unauthorized");
     error.statusCode = 401;
     return next(error);
   }
 
   try {
-    const hasUser = await User.findById(user._id);
-    if (!hasUser) {
+    const user = await User.findById(userId).select("-password");
+    if (!user) {
       const error = new Error("User not found");
       error.statusCode = 404;
       return next(error);
@@ -85,6 +86,7 @@ const deleteCurrentUser = async (req, res, next) => {
   }
 };
 
+// Cart
 const getCart = async (req, res, next) => {
   const { _id: userId } = req.user.user;
 
@@ -226,13 +228,21 @@ const deleteCartItem = async (req, res, next) => {
 
   try {
     const user = await User.findById(userId);
-    user.cart = user.cart.filter((item) => item._id.toString() !== itemId);
+    const itemIndex = user.cart.findIndex(
+      (item) => item._id.toString() === itemId
+    );
+    if (itemIndex === -1) {
+      const error = new Error("Item not found in your cart");
+      error.statusCode = 404;
+      return next(error);
+    }
+    user.cart.splice(itemIndex, 1);
     await user.save();
 
     res.json({
       error: false,
       message: "Item deleted successfully",
-      cart: filteredCart,
+      cart: user.cart,
     });
   } catch (error) {
     next(error);
@@ -262,7 +272,160 @@ const clearCart = async (req, res, next) => {
   }
 };
 
-// =========================Admin============================
+// Address
+const getAddress = async (req, res, next) => {
+  const { _id: userId } = req.user.user;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      const error = new Error("User not found");
+      error.statusCode = 404;
+      return next(error);
+    }
+
+    res.json({
+      error: false,
+      message: "Retrived user address successfully",
+      address: user.address,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const addNewAddress = async (req, res, next) => {
+  const { _id: userId } = req.user.user;
+  const { name, phone, street, district, province, postalCode } = req.body;
+
+  if (!phone || !street || !district || !province || !postalCode) {
+    const error = new Error("Please provide all fields");
+    error.statusCode = 400;
+    return next(error);
+  }
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      const error = new Error("User not found");
+      error.statusCode = 404;
+      return next(error);
+    }
+
+    user.address.push({
+      name: name || `${user.firstName} ${user.lastName}`,
+      phone,
+      street,
+      district,
+      province,
+      postalCode,
+    });
+    await user.save();
+
+    res.status(201).json({
+      error: false,
+      message: "Your address added successfully",
+      address: user.address,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const editAddress = async (req, res, next) => {
+  const { _id: userId } = req.user.user;
+  const { addressId } = req.params;
+  const { name, phone, street, district, province, postalCode } = req.body;
+
+  if (!mongoose.Types.ObjectId.isValid(addressId)) {
+    const error = new Error("Invalid address ID");
+    error.statusCode = 400;
+    return next(error);
+  }
+
+  if (!phone || !street || !district || !province || !postalCode) {
+    const error = new Error("Please provide all fields");
+    error.statusCode = 400;
+    return next(error);
+  }
+
+  try {
+    const user = await User.findById(userId).select("-password");
+    if (!user) {
+      const error = new Error("User not found");
+      error.statusCode = 404;
+      return next(error);
+    }
+
+    const addressIndex = user.address.findIndex(
+      (address) => address._id.toString() === addressId
+    );
+    if (addressIndex === -1) {
+      const error = new Error("Address not found");
+      error.statusCode = 404;
+      return next(error);
+    }
+
+    user.address[addressIndex] = {
+      name: name || `${user.firstName} ${user.lastName}`,
+      phone,
+      street,
+      district,
+      province,
+      postalCode,
+    };
+    await user.save();
+
+    res.json({
+      error: false,
+      message: "Your address updated successfully",
+      address: user.address,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteAddress = async (req, res, next) => {
+  const { _id: userId } = req.user.user;
+  const { addressId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(addressId)) {
+    const error = new Error("Invalid address ID");
+    error.statusCode = 400;
+    return next(error);
+  }
+
+  try {
+    const user = await User.findById(userId).select("-password");
+    if (!user) {
+      const error = new Error("User not found");
+      error.statusCode = 404;
+      return next(error);
+    }
+
+    const addressIndex = user.address.findIndex(
+      (address) => address._id.toString() === addressId
+    );
+    if (addressIndex === -1) {
+      const error = new Error("Address not found");
+      error.statusCode = 404;
+      return next(error);
+    }
+    user.address.splice(addressIndex, 1);
+    await user.save();
+
+    res.json({
+      error: false,
+      message: "Your address has been deleted",
+      address: user.address,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/* ========================= Admin ============================ */
 const getAllUsers = async (req, res, next) => {
   const { user } = req.user;
 
@@ -349,6 +512,10 @@ export {
   updateCartItem,
   deleteCartItem,
   clearCart,
+  getAddress,
+  addNewAddress,
+  editAddress,
+  deleteAddress,
   getAllUsers,
   getOneUser,
   deleteUser,
