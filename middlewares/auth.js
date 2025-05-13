@@ -1,19 +1,24 @@
 import jwt from "jsonwebtoken";
 
 export const authUser = async (req, res, next) => {
-  const token =
-    req.cookies?.accessToken ||
-    req.header("Authorization")?.replace("Bearer ", "");
+  const token = req.cookies?.accessToken;
 
   if (!token) {
     return res
-      .status(403)
-      .json({ error: true, message: "Access denied. No token provided" });
+      .status(401)
+      .json({ error: true, message: "Unauthorized - No Token" });
   }
 
   try {
     const decoded_token = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = { _id: decoded_token._id };
+    req.user = {
+      user: {
+        _id: decoded_token._id,
+        email: decoded_token.email,
+        username: decoded_token.username,
+        role: decoded_token.role,
+      },
+    };
     next();
   } catch (error) {
     const isExpired = error.name === "TokenExpiredError";

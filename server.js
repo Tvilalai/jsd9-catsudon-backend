@@ -23,6 +23,6 @@ app.use('/calnoy-api/v1', apiRouter);
 app.use(errorHandler);
 
 app.listen(PORT, () => {
-    connectMongo();
-    console.log(`✅ Server Running on http://localhost:${PORT}`);
+  connectMongo();
+  console.log(`✅ Server Running on http://localhost:${PORT}`);
 });

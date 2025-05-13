@@ -5,48 +5,53 @@ import { User } from "../models/User.js";
 
 // Register (Create Account)
 export const createAccount = async (req, res, next) => {
-    const { username, firstName, lastName, email, password } = req.body;
+  const { username, role, firstName, lastName, email, password } = req.body;
 
-    if (!username || !firstName || !lastName || !validator.isEmail(email) || !password) {
-        const error = new Error("Invalid input");
-        error.statusCode = 400;
-        return next(error);
-    }
+  if (
+    !username ||
+    !firstName ||
+    !lastName ||
+    !validator.isEmail(email) ||
+    !password
+  ) {
+    const error = new Error("Invalid input");
+    error.statusCode = 400;
+    return next(error);
+  }
 
-    if (!validator.isStrongPassword(password)) {
-        const error = new Error("Weak password. Please choose a stronger password.");
-        error.statusCode = 400;
-        return next(error);
-    }
+  if (!validator.isStrongPassword(password)) {
+    const error = new Error("Weak password. Please choose a stronger password.");
+    error.statusCode = 400;
+    return next(error);
+  }
 
-    const existingUser = await User.findOne({ email });
+  const existingUser = await User.findOne({ email });
 
-    if (existingUser) {
-        const error = new Error("User exists");
-        error.statusCode = 400;
-        return next(error);
-    }
+  if (existingUser) {
+    const error = new Error("User exists");
+    error.statusCode = 400;
+    return next(error);
+  }
 
-    try {
-        const hashedPassword = await bcrypt.hash(password, 14);
+  try {
+    const user = new User({
+      username,
+      role,
+      firstName,
+      lastName,
+      email,
+      password,
+    });
 
-        const user = new User({
-            username,
-            firstName,
-            lastName,
-            email,
-            password: hashedPassword,
-        });
+    await user.save();
 
-        await user.save();
-
-        res.json({
-            error: false,
-            message: "Registration successful. Please log in to continue."
-        });
-    } catch (error) {
-        next(error);
-    }
+    res.json({
+      error: false,
+      message: "Registration successful. Please log in to continue.",
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 const cookieOptions = {
@@ -104,8 +109,7 @@ export const login = async (req, res, next) => {
     } catch (error) {
         next(error);
     }
-};
-
+  
 // Logout
 export const logout = (req, res) => {
     res.clearCookie("accessToken", { ...cookieOptions, path: '/' });
@@ -113,6 +117,7 @@ export const logout = (req, res) => {
         error: false,
         message: "Logged out successfully",
     });
+
 };
 
 // Get User info
