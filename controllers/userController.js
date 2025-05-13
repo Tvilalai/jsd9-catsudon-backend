@@ -5,15 +5,14 @@ import { Menu } from "../models/Menu.js";
 /* ========================= User ============================ */
 // User
 const getCurrentUser = async (req, res, next) => {
-  const { _id: userId } = req.user.user;
-
-  if (!userId) {
-    const error = new Error("Unauthorized");
-    error.statusCode = 401;
-    return next(error);
-  }
-
   try {
+    const { _id: userId } = req.user.user;
+
+    if (!userId) {
+      const error = new Error("Unauthorized");
+      error.statusCode = 401;
+      return next(error);
+    }
     const user = await User.findById(userId).select("-password");
     if (!user) {
       const error = new Error("User not found");
@@ -31,17 +30,22 @@ const getCurrentUser = async (req, res, next) => {
 };
 
 const updateUserInformation = async (req, res, next) => {
-  const { user } = req.user;
-  const dataToUpdate = req.body;
-
-  if (user.role !== "admin" && Object.hasOwn(dataToUpdate, "role")) {
-    const error = new Error("You cannot edit 'role'");
-    error.statusCode = 403;
-    return next(error);
-  }
-
   try {
+    const { user } = req.user;
+    const dataToUpdate = req.body;
+
+    if (user.role !== "admin" && Object.hasOwn(dataToUpdate, "role")) {
+      const error = new Error("You cannot edit 'role'");
+      error.statusCode = 403;
+      return next(error);
+    }
     const userToUpdate = await User.findById(user._id);
+    if (!userToUpdate) {
+      return next(
+        Object.assign(new Error("User not found"), { statusCode: 404 })
+      );
+    }
+
     if (!userToUpdate) {
       const error = new Error("User not found");
       error.statusCode = 404;
@@ -61,9 +65,8 @@ const updateUserInformation = async (req, res, next) => {
 };
 
 const deleteCurrentUser = async (req, res, next) => {
-  const { user } = req.user;
-
   try {
+    const { user } = req.user;
     const deletedUser = await User.findByIdAndDelete(user._id);
     if (!deletedUser) {
       const error = new Error("User not found");
@@ -88,10 +91,14 @@ const deleteCurrentUser = async (req, res, next) => {
 
 // Cart
 const getCart = async (req, res, next) => {
-  const { _id: userId } = req.user.user;
-
   try {
+    const { _id: userId } = req.user.user;
     const user = await User.findById(userId);
+    if (!user) {
+      return next(
+        Object.assign(new Error("User not found"), { statusCode: 404 })
+      );
+    }
     if (!user.cart || user.cart.length === 0) {
       return res.json({ error: false, message: "Your cart is empty 🛒" });
     }
@@ -106,55 +113,47 @@ const getCart = async (req, res, next) => {
 };
 
 const addToCart = async (req, res, next) => {
-  const { _id: userId } = req.user.user;
-  const itemToAdd = req.body;
-
-  if (
-    !itemToAdd.menuId ||
-    !itemToAdd.name ||
-    !itemToAdd.price ||
-    !itemToAdd.imageUrl
-  ) {
-    const error = new Error("Please provide all fields.");
-    error.statusCode = 400;
-    return next(error);
-  }
-
-  if (itemToAdd.quantity < 1) {
-    const error = new Error("Item quantity cannot be less than 1");
-    error.statusCode = 400;
-    return next(error);
-  }
-
   try {
-    const user = await User.findById(userId);
+    const { _id: userId } = req.user.user;
+    const { menuId } = req.params;
 
+    const user = await User.findById(userId);
+    if (!user) {
+      const error = new Error("User not found");
+      error.statusCode = 404;
+      return next(error);
+    }
+
+    let newCartItem;
     const existingItem = user.cart.find(
-      (item) => item.menuId.toString() === itemToAdd.menuId
+      (item) => item.menuId.toString() === menuId
     );
     if (existingItem) {
-      existingItem.quantity += itemToAdd.quantity;
+      existingItem.quantity += 1;
+      newCartItem = existingItem;
     } else {
-      const menu = await Menu.findById(itemToAdd.menuId);
+      const menu = await Menu.findById(menuId);
       if (!menu) {
         const error = new Error("Menu not found");
         error.statusCode = 404;
         return next(error);
       }
-      user.cart.push({
+      newCartItem = {
         menuId: menu._id,
         name: menu.name,
+        servingSize: menu.servingSize,
         price: menu.price,
-        quantity: itemToAdd.quantity,
+        quantity: 1,
         imageUrl: menu.imageUrl,
-      });
+      };
+      user.cart.push(newCartItem);
     }
 
     await user.save();
     res.status(201).json({
       error: false,
       message: "Item added to cart successfully",
-      cart: user.cart,
+      item: newCartItem,
     });
   } catch (error) {
     next(error);
@@ -162,23 +161,22 @@ const addToCart = async (req, res, next) => {
 };
 
 const updateCartItem = async (req, res, next) => {
-  const { _id: userId } = req.user.user;
-  const { itemId } = req.params;
-  const { quantity } = req.body;
-
-  if (!mongoose.Types.ObjectId.isValid(itemId)) {
-    const error = new Error("Invalid Item ID");
-    error.statusCode = 400;
-    return next(error);
-  }
-
-  if (typeof quantity !== "number") {
-    const error = new Error("Quantity must be a number");
-    error.statusCode = 400;
-    return next(error);
-  }
-
   try {
+    const { _id: userId } = req.user.user;
+    const { itemId } = req.params;
+    const { quantity } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(itemId)) {
+      const error = new Error("Invalid Item ID");
+      error.statusCode = 400;
+      return next(error);
+    }
+
+    if (typeof quantity !== "number") {
+      const error = new Error("Quantity must be a number");
+      error.statusCode = 400;
+      return next(error);
+    }
     const user = await User.findById(userId);
     if (!user) {
       const error = new Error("User not found");
@@ -209,6 +207,7 @@ const updateCartItem = async (req, res, next) => {
     res.json({
       error: false,
       message: "Cart updated successfully",
+      item,
       cart: user.cart,
     });
   } catch (error) {
@@ -217,16 +216,15 @@ const updateCartItem = async (req, res, next) => {
 };
 
 const deleteCartItem = async (req, res, next) => {
-  const { _id: userId } = req.user.user;
-  const { itemId } = req.params;
-
-  if (!mongoose.Types.ObjectId.isValid(itemId)) {
-    const error = new Error("Invalid item ID");
-    error.statusCode = 404;
-    return next(error);
-  }
-
   try {
+    const { _id: userId } = req.user.user;
+    const { itemId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(itemId)) {
+      const error = new Error("Invalid item ID");
+      error.statusCode = 404;
+      return next(error);
+    }
     const user = await User.findById(userId);
     const itemIndex = user.cart.findIndex(
       (item) => item._id.toString() === itemId
@@ -250,9 +248,8 @@ const deleteCartItem = async (req, res, next) => {
 };
 
 const clearCart = async (req, res, next) => {
-  const { _id: userId } = req.user.user;
-
   try {
+    const { _id: userId } = req.user.user;
     const user = await User.findById(userId);
     if (!user) {
       const error = new Error("User not found");
@@ -264,7 +261,7 @@ const clearCart = async (req, res, next) => {
 
     res.json({
       error: false,
-      message: "Cart cleared successfully",
+      message: "Your cart is empty 🛒",
       cart: user.cart,
     });
   } catch (error) {
@@ -274,9 +271,8 @@ const clearCart = async (req, res, next) => {
 
 // Address
 const getAddress = async (req, res, next) => {
-  const { _id: userId } = req.user.user;
-
   try {
+    const { _id: userId } = req.user.user;
     const user = await User.findById(userId);
     if (!user) {
       const error = new Error("User not found");
@@ -295,16 +291,15 @@ const getAddress = async (req, res, next) => {
 };
 
 const addNewAddress = async (req, res, next) => {
-  const { _id: userId } = req.user.user;
-  const { name, phone, street, district, province, postalCode } = req.body;
-
-  if (!phone || !street || !district || !province || !postalCode) {
-    const error = new Error("Please provide all fields");
-    error.statusCode = 400;
-    return next(error);
-  }
-
   try {
+    const { _id: userId } = req.user.user;
+    const { name, phone, street, district, province, postalCode } = req.body;
+
+    if (!phone || !street || !district || !province || !postalCode) {
+      const error = new Error("Please provide all fields");
+      error.statusCode = 400;
+      return next(error);
+    }
     const user = await User.findById(userId);
     if (!user) {
       const error = new Error("User not found");
