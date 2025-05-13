@@ -11,6 +11,10 @@ const ItemSchema = new Schema({
     type: String,
     required: true,
   },
+  servingSize: {
+    type: String,
+    required: true,
+  },
   price: {
     type: Number,
     required: true,

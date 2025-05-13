@@ -28,7 +28,7 @@ router.delete("/users/me", authUser, deleteCurrentUser);
 
 // Cart
 router.get("/users/me/cart", authUser, getCart);
-router.post("/users/me/cart", authUser, addToCart);
+router.post("/users/me/cart/:menuId", authUser, addToCart);
 router.delete("/users/me/cart", authUser, clearCart);
 router.patch("/users/me/cart/item/:itemId", authUser, updateCartItem);
 router.delete("/users/me/cart/item/:itemId", authUser, deleteCartItem);
