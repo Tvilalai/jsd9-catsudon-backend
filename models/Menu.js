@@ -38,8 +38,6 @@ const MenuSchema = new Schema(
     dietary: { type: [String], required: true },
     ingredients: { type: IngredientsSchema, required: true },
     allergens: { type: [String], default: [] },
-    createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );
