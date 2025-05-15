@@ -56,12 +56,6 @@ export const createAccount = async (req, res, next) => {
   }
 };
 
-const cookieOptions = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "Strict",
-};
-
 // Login
 export const login = async (req, res, next) => {
   const { emailOrUsername, password } = req.body;
@@ -104,8 +98,13 @@ export const login = async (req, res, next) => {
       expiresIn: "24h",
     });
 
+    const isProd = process.env.NODE_ENV === "production";
+
     res.cookie("accessToken", token, {
-      ...cookieOptions,
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? "none" : "lax",
+      path: "/",
       maxAge: 24 * 60 * 60 * 1000,
     });
 
@@ -121,7 +120,12 @@ export const login = async (req, res, next) => {
 
 // Logout
 export const logout = (req, res) => {
-  res.clearCookie("accessToken", { ...cookieOptions, path: "/" });
+  res.clearCookie("accessToken", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "Strict",
+    path: "/",
+  });
   res.json({
     error: false,
     message: "Logged out successfully",
