@@ -34,9 +34,17 @@ const AddressSchema = new Schema({
   name: { type: String, required: true },
   phone: { type: String, required: true },
   street: { type: String, required: true },
+  city: {
+    type: String,
+    required: true,
+  },
   district: { type: String, required: true },
   province: { type: String, required: true },
   postalCode: { type: String, required: true },
+  country: {
+    type: String,
+    required: true,
+  },
 });
 
 const UserSchema = new Schema(
@@ -47,11 +55,10 @@ const UserSchema = new Schema(
       enum: ["user", "admin"],
       default: "user",
       required: true,
-      trim: true,
     },
-    firstName: { type: String, required: true, trim: true },
-    lastName: { type: String, required: true, trim: true },
-    email: { type: String, required: true, trim: true },
+    firstName: { type: String, required: true },
+    lastName: { type: String, required: true },
+    email: { type: String, required: true },
     password: { type: String, required: true },
     cart: { type: [ItemSchema], default: [] },
     address: { type: [AddressSchema], default: [] },
