@@ -120,10 +120,11 @@ export const login = async (req, res, next) => {
 
 // Logout
 export const logout = (req, res) => {
+  const isProd = process.env.NODE_ENV === "production";
   res.clearCookie("accessToken", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "Strict",
+    secure: isProd,
+    sameSite: isProd ? "none" : "lax",
     path: "/",
   });
   res.json({
